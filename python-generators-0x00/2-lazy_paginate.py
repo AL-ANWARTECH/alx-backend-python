@@ -1,38 +1,30 @@
 import mysql.connector
 
-# Generator to stream users in batches
-def stream_users_in_batches(batch_size):
+# Function that fetches one page of users from the DB
+def paginate_users(page_size, offset):
     try:
         connection = mysql.connector.connect(
             host="localhost",
-            user="AlAnwarTech",  
-            password="AnwarSagir@360",
+            user="AlAnwarTech",
+            password="AnwarSagir@360", 
             database="ALX_prodev"
         )
         cursor = connection.cursor(dictionary=True)
-        offset = 0
-
-        while True:
-            cursor.execute(
-                "SELECT * FROM user_data LIMIT %s OFFSET %s", (batch_size, offset)
-            )
-            rows = cursor.fetchall()
-            if not rows:
-                break
-            yield rows
-            offset += batch_size
-
-
+        cursor.execute("SELECT * FROM user_data LIMIT %s OFFSET %s", (page_size, offset))
+        rows = cursor.fetchall()
         cursor.close()
         connection.close()
-
+        return rows
     except mysql.connector.Error as err:
         print(f"Database error: {err}")
-        
+        return []
 
-# Generator that yields users over age 25
-def batch_processing(batch_size):
-    for batch in stream_users_in_batches(batch_size):
-        for user in batch:
-            if user["age"] > 25:
-                return user
+# Generator that lazily paginates using the above function
+def lazypaginate(page_size):
+    offset = 0
+    while True:
+        page = paginate_users(page_size, offset)
+        if not page:
+            break
+        yield page
+        offset += page_size
