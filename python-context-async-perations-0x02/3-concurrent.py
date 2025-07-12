@@ -11,9 +11,7 @@ async def async_fetch_users():
         cursor = await db.execute("SELECT * FROM users")
         rows = await cursor.fetchall()
         await cursor.close()
-        print("All users:")
-        for row in rows:
-            print(row)
+        return rows  # ✅ return added
 
 async def async_fetch_older_users():
     """
@@ -23,18 +21,24 @@ async def async_fetch_older_users():
         cursor = await db.execute("SELECT * FROM users WHERE age > ?", (40,))
         rows = await cursor.fetchall()
         await cursor.close()
-        print("Users older than 40:")
-        for row in rows:
-            print(row)
+        return rows  # ✅ return added
 
 async def fetch_concurrently():
     """
     Run both fetch functions concurrently using asyncio.gather().
     """
-    await asyncio.gather(
+    all_users, older_users = await asyncio.gather(
         async_fetch_users(),
         async_fetch_older_users()
     )
+
+    print("All users:")
+    for user in all_users:
+        print(user)
+
+    print("Users older than 40:")
+    for user in older_users:
+        print(user)
 
 if __name__ == "__main__":
     asyncio.run(fetch_concurrently())
