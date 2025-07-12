@@ -16,21 +16,23 @@ def with_db_connection(func):
 
 def transactional(func):
     @functools.wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(conn, *args, **kwargs):
         try:
-            result = func(*args, **kwargs)
+            result = func(conn, *args, **kwargs)
             conn.commit()
             return result
-        except Exception :
+        except Exception:
             conn.rollback()
             raise
     return wrapper
 
 @with_db_connection
-@transactional
 def update_user(conn, user_id, name, email):
-    cursor = conn.cursor()
-    cursor.execute("UPDATE users SET name = ?, email = ? WHERE id = ?", (name, email, user_id))
-    return cursor.rowcount
+    @transactional
+    def inner_update(conn, user_id, name, email):
+        cursor = conn.cursor()
+        cursor.execute("UPDATE users SET name = ?, email = ? WHERE id = ?", (name, email, user_id))
+        return cursor.rowcount
+    return inner_update(conn, user_id, name, email)
 # Update user with automatic transaction management
 user_id = 1
