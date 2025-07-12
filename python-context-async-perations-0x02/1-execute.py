@@ -6,7 +6,7 @@ class ExecuteQuery:
         """Intialize with database name, query and optional parameters."""
         self.db_file =db_file
         self.query = query
-        self.params = params []
+        self.params = params or []
         self.connection = None
         self.cursor = None
         self.results = None
