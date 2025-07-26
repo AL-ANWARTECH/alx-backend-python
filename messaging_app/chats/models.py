@@ -17,6 +17,7 @@ class User(AbstractUser):
         default='guest'
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    # password field is inherited from AbstractUser
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username', 'first_name', 'last_name']
