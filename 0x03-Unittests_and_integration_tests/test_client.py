@@ -56,12 +56,15 @@ class TestGithubOrgClient(unittest.TestCase):
 
 # ---------------------- Integration tests ----------------------
 
-@parameterized_class([{
-    "org_payload": org_payload,
-    "repos_payload": repos_payload,
-    "expected_repos": expected_repos,
-    "apache2_repos": apache2_repos,
-}])
+@parameterized_class([
+    {
+        "org_payload": org_payload,
+        "repos_payload": repos_payload,
+        "expected_repos": expected_repos,
+        "apache2_repos": apache2_repos,
+    }
+], class_name_func=lambda cls, num, params_dict: f"TestIntegrationGithubOrgClient_{num}",
+   doc_func=lambda cls, num, params_dict: f"Integration test {num}")
 class TestIntegrationGithubOrgClient(unittest.TestCase):
     """Integration tests for GithubOrgClient.public_repos."""
 
@@ -86,7 +89,6 @@ class TestIntegrationGithubOrgClient(unittest.TestCase):
             return resp
 
         mock_get.side_effect = side_effect
-        cls._mock_get = mock_get  # keep a ref if you want to assert calls
 
     @classmethod
     def tearDownClass(cls):
