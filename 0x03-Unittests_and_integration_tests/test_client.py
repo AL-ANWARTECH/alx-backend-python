@@ -6,6 +6,7 @@ Unit tests for client.GithubOrgClient and integration tests.
 import unittest
 from unittest.mock import patch, PropertyMock
 from parameterized import parameterized, parameterized_class
+
 from client import GithubOrgClient
 from fixtures import org_payload, repos_payload, expected_repos, apache2_repos
 
@@ -89,26 +90,38 @@ class TestIntegrationGithubOrgClient(unittest.TestCase):
         """Set up patcher for requests.get."""
         cls.get_patcher = patch("requests.get")
         mock_get = cls.get_patcher.start()
-
-        # Configure the mock to return different payloads based on the URL
-        mock_get.side_effect = lambda url: MockResponse(url)
+        mock_get.side_effect = lambda url: MockResponse(url, cls)
 
     @classmethod
     def tearDownClass(cls):
         """Stop patcher."""
         cls.get_patcher.stop()
 
+    def test_public_repos(self):
+        """Integration test for public_repos."""
+        client = GithubOrgClient("google")
+        self.assertEqual(client.public_repos(), self.expected_repos)
+
+    def test_public_repos_with_license(self):
+        """Integration test for public_repos with license filtering."""
+        client = GithubOrgClient("google")
+        self.assertEqual(
+            client.public_repos(license="apache-2.0"),
+            self.apache2_repos
+        )
+
 
 class MockResponse:
     """Helper mock response class for integration tests."""
 
-    def __init__(self, url):
+    def __init__(self, url, cls):
         self.url = url
+        self.cls = cls
 
     def json(self):
         if "repos" in self.url:
-            return repos_payload
-        return org_payload
+            return self.cls.repos_payload
+        return self.cls.org_payload
 
 
 if __name__ == "__main__":
