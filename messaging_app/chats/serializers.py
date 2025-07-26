@@ -6,10 +6,11 @@ from .models import User, Conversation, Message
 
 class UserSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
+    display_role = serializers.CharField(source='get_role_display', read_only=True)
     
     class Meta:
         model = User
-        fields = ['user_id', 'first_name', 'last_name', 'full_name', 'email', 'phone_number', 'role', 'created_at']
+        fields = ['user_id', 'first_name', 'last_name', 'full_name', 'display_role', 'email', 'phone_number', 'role', 'created_at']
         read_only_fields = ['user_id', 'created_at']
     
     def get_full_name(self, obj):
@@ -24,10 +25,11 @@ class UserSerializer(serializers.ModelSerializer):
 class MessageSerializer(serializers.ModelSerializer):
     sender = UserSerializer(read_only=True)
     message_preview = serializers.SerializerMethodField()
+    formatted_sent_at = serializers.CharField(source='sent_at', read_only=True)
     
     class Meta:
         model = Message
-        fields = ['message_id', 'sender', 'message_body', 'message_preview', 'sent_at']
+        fields = ['message_id', 'sender', 'message_body', 'message_preview', 'formatted_sent_at', 'sent_at']
         read_only_fields = ['message_id', 'sent_at']
     
     def get_message_preview(self, obj):
@@ -39,10 +41,11 @@ class ConversationSerializer(serializers.ModelSerializer):
     messages = MessageSerializer(many=True, read_only=True)
     participant_count = serializers.SerializerMethodField()
     latest_message = serializers.SerializerMethodField()
+    conversation_status = serializers.CharField(default="active", read_only=True)
     
     class Meta:
         model = Conversation
-        fields = ['conversation_id', 'participants', 'participant_count', 'messages', 'latest_message', 'created_at']
+        fields = ['conversation_id', 'participants', 'participant_count', 'conversation_status', 'messages', 'latest_message', 'created_at']
         read_only_fields = ['conversation_id', 'created_at']
     
     def get_participant_count(self, obj):
