@@ -1,4 +1,4 @@
-# messaging_app/chats/views.py
+# chats/views.py
 
 from rest_framework import viewsets, status, filters
 from rest_framework.response import Response
@@ -6,13 +6,13 @@ from rest_framework.decorators import action
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Conversation, Message, User
 from .serializers import ConversationSerializer, MessageSerializer
-from .permissions import IsParticipantOrReadOnly, IsSenderOrReadOnly
+from .permissions import IsParticipantOfConversation, IsOwnerOrParticipant
 
 
 class ConversationViewSet(viewsets.ModelViewSet):
     queryset = Conversation.objects.all()
     serializer_class = ConversationSerializer
-    permission_classes = [IsParticipantOrReadOnly]
+    permission_classes = [IsParticipantOfConversation]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
     search_fields = ['participants__email', 'participants__first_name', 'participants__last_name']
     ordering_fields = ['created_at']
@@ -69,7 +69,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
 class MessageViewSet(viewsets.ModelViewSet):
     queryset = Message.objects.all()
     serializer_class = MessageSerializer
-    permission_classes = [IsSenderOrReadOnly]
+    permission_classes = [IsOwnerOrParticipant]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
     search_fields = ['message_body', 'sender__email']
     ordering_fields = ['sent_at']
@@ -82,6 +82,10 @@ class MessageViewSet(viewsets.ModelViewSet):
                 conversation__participants=self.request.user
             ).distinct()
         return Message.objects.none()
+
+    def perform_create(self, serializer):
+        # Automatically set the sender to the current user
+        serializer.save(sender=self.request.user)
 
     def create(self, request, *args, **kwargs):
         """
