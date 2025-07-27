@@ -8,6 +8,8 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .models import Conversation, Message, User
 from .serializers import ConversationSerializer, MessageSerializer
 from .permissions import IsParticipantOfConversation, IsOwnerOrParticipant
+from .pagination import MessagePagination
+from .filters import MessageFilter, ConversationFilter
 
 
 class ConversationViewSet(viewsets.ModelViewSet):
@@ -15,6 +17,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
     serializer_class = ConversationSerializer
     permission_classes = [IsParticipantOfConversation]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
+    filterset_class = ConversationFilter
     search_fields = ['participants__email', 'participants__first_name', 'participants__last_name']
     ordering_fields = ['created_at']
     ordering = ['-created_at']
@@ -69,12 +72,17 @@ class ConversationViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def messages(self, request, pk=None):
         """
-        Get all messages for a specific conversation
+        Get all messages for a specific conversation with pagination
         """
         conversation = self.get_object()
         messages = conversation.messages.all().order_by('sent_at')
-        serializer = MessageSerializer(messages, many=True)
-        return Response(serializer.data)
+        
+        # Apply pagination
+        paginator = MessagePagination()
+        paginated_messages = paginator.paginate_queryset(messages, request)
+        serializer = MessageSerializer(paginated_messages, many=True)
+        
+        return paginator.get_paginated_response(serializer.data)
 
 
 class MessageViewSet(viewsets.ModelViewSet):
@@ -82,6 +90,8 @@ class MessageViewSet(viewsets.ModelViewSet):
     serializer_class = MessageSerializer
     permission_classes = [IsOwnerOrParticipant]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
+    filterset_class = MessageFilter
+    pagination_class = MessagePagination
     search_fields = ['message_body', 'sender__email']
     ordering_fields = ['sent_at']
     ordering = ['-sent_at']
@@ -120,7 +130,7 @@ class MessageViewSet(viewsets.ModelViewSet):
             if request.user not in conversation.participants.all():
                 return Response(
                     {'error': 'You are not part of this conversation'}, 
-                    status=status.HTTP_403_FORBIDDEN  # Added HTTP_403_FORBIDDEN
+                    status=status.HTTP_403_FORBIDDEN
                 )
             
             # Create the message with current user as sender
@@ -146,23 +156,9 @@ class MessageViewSet(viewsets.ModelViewSet):
     
     def list(self, request, *args, **kwargs):
         """
-        List all messages, optionally filtered by conversation
+        List all messages with pagination and filtering
         """
-        conversation_id = request.query_params.get('conversation_id', None)
-        
-        if conversation_id:
-            queryset = Message.objects.filter(
-                conversation__conversation_id=conversation_id,
-                conversation__participants=request.user
-            )
-        else:
-            queryset = Message.objects.filter(
-                conversation__participants=request.user
-            )
-            
-        queryset = queryset.order_by('-sent_at')
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
+        return super().list(request, *args, **kwargs)
     
     def update(self, request, *args, **kwargs):
         """
