@@ -22,12 +22,17 @@ class IsParticipantOfConversation(permissions.BasePermission):
                 return request.user in obj.conversation.participants.all()
         
         # Write permissions - only for participants
-        if hasattr(obj, 'participants'):
-            # Conversation object
-            return request.user in obj.participants.all()
-        elif hasattr(obj, 'conversation'):
-            # Message object
-            return request.user in obj.conversation.participants.all()
+        # Handle PUT, PATCH, DELETE methods
+        if request.method in ['PUT', 'PATCH', 'DELETE']:
+            if hasattr(obj, 'participants'):
+                # Conversation object
+                return request.user in obj.participants.all()
+            elif hasattr(obj, 'conversation'):
+                # Message object - only sender can edit/delete
+                if request.method in ['PUT', 'PATCH']:
+                    return obj.sender == request.user
+                # All participants can delete (if needed)
+                return request.user in obj.conversation.participants.all()
         
         return False
     
@@ -51,12 +56,13 @@ class IsOwnerOrParticipant(permissions.BasePermission):
             elif hasattr(obj, 'participants'):
                 return request.user in obj.participants.all()
         
-        # Write permissions - only for message owners
-        if hasattr(obj, 'sender'):
-            return obj.sender == request.user
-        elif hasattr(obj, 'user_id'):
-            return obj.user_id == request.user.user_id
-            
+        # Write permissions - handle PUT, PATCH, DELETE
+        if request.method in ['PUT', 'PATCH', 'DELETE']:
+            if hasattr(obj, 'sender'):
+                return obj.sender == request.user
+            elif hasattr(obj, 'user_id'):
+                return obj.user_id == request.user.user_id
+                
         return False
     
     def has_permission(self, request, view):

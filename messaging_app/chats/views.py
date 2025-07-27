@@ -3,6 +3,7 @@
 from rest_framework import viewsets, status, filters
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Conversation, Message, User
 from .serializers import ConversationSerializer, MessageSerializer
@@ -17,6 +18,16 @@ class ConversationViewSet(viewsets.ModelViewSet):
     search_fields = ['participants__email', 'participants__first_name', 'participants__last_name']
     ordering_fields = ['created_at']
     ordering = ['-created_at']
+
+    def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        """
+        if self.action == 'create':
+            permission_classes = [IsAuthenticated]
+        else:
+            permission_classes = [IsParticipantOfConversation]
+        return [permission() for permission in permission_classes]
 
     def get_queryset(self):
         # Users can only see conversations they're part of
@@ -109,7 +120,7 @@ class MessageViewSet(viewsets.ModelViewSet):
             if request.user not in conversation.participants.all():
                 return Response(
                     {'error': 'You are not part of this conversation'}, 
-                    status=status.HTTP_400_BAD_REQUEST
+                    status=status.HTTP_403_FORBIDDEN  # Added HTTP_403_FORBIDDEN
                 )
             
             # Create the message with current user as sender
@@ -152,3 +163,27 @@ class MessageViewSet(viewsets.ModelViewSet):
         queryset = queryset.order_by('-sent_at')
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+    
+    def update(self, request, *args, **kwargs):
+        """
+        Update a message (only sender can update)
+        """
+        instance = self.get_object()
+        if instance.sender != request.user:
+            return Response(
+                {'error': 'You do not have permission to update this message'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().update(request, *args, **kwargs)
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        Delete a message (only sender can delete)
+        """
+        instance = self.get_object()
+        if instance.sender != request.user:
+            return Response(
+                {'error': 'You do not have permission to delete this message'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().destroy(request, *args, **kwargs)
