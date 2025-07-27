@@ -94,3 +94,41 @@ class OffensiveLanguageMiddleware:
         if x_forwarded_for:
             return x_forwarded_for.split(',')[0]
         return request.META.get('REMOTE_ADDR')
+
+
+class RolepermissionMiddleware:
+    """
+    Middleware that checks the user's role (admin or moderator) before allowing access to specific actions.
+    If the user is not admin or moderator, it returns a 403 Forbidden error.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        # Define paths that require admin or moderator role
+        # Example: Admin panel, user management, etc.
+        # You can adjust these paths based on your specific requirements
+        protected_admin_paths = [
+            '/admin/',
+            # Add other paths that should be restricted to admins/moderators
+        ]
+        
+        # Check if the request path is in the protected paths
+        if any(request.path.startswith(path) for path in protected_admin_paths):
+            # Check if user is authenticated
+            if not request.user.is_authenticated:
+                return HttpResponseForbidden("Access denied. You must be logged in.")
+            
+            # Check user role
+            # Assuming your custom User model has a 'role' field with values like 'admin', 'moderator', 'guest', 'host'
+            user_role = getattr(request.user, 'role', None)
+            
+            # Allow access if user is admin or moderator
+            if user_role not in ['admin', 'moderator']:
+                return HttpResponseForbidden(
+                    "Access denied. You must be an admin or moderator to access this resource."
+                )
+
+        # Process the request normally for all other cases
+        return self.get_response(request)
