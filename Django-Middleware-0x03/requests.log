@@ -44,4 +44,18 @@ class RequestLoggingMiddleware:
         # Process the request
         response = self.get_response(request)
         
-        return response
+        return response2025-07-27 15:30:39.509609 - User: AnonymousUser - Path: /
+2025-07-27 15:30:40.211879 - User: AnonymousUser - Path: /favicon.ico
+2025-07-27 15:31:06.427377 - User: AnonymousUser - Path: /admin/
+2025-07-27 15:31:06.457872 - User: AnonymousUser - Path: /admin/login/
+2025-07-27 15:31:33.780784 - User: AnonymousUser - Path: /admin/login/
+2025-07-27 15:31:34.998056 - User: anwarsagirmustapha1@gmail.com - Path: /admin/
+2025-07-27 15:31:43.236053 - User: anwarsagirmustapha1@gmail.com - Path: /admin/logout/
+2025-07-27 15:31:45.825137 - User: AnonymousUser - Path: /admin/
+2025-07-27 15:31:45.837833 - User: AnonymousUser - Path: /admin/login/
+2025-07-27 15:32:03.886546 - User: AnonymousUser - Path: /admin/login/
+2025-07-27 15:32:12.847318 - User: AnonymousUser - Path: /admin/login/
+2025-07-27 15:32:21.072339 - User: AnonymousUser - Path: /admin/login/
+2025-07-27 15:32:22.221628 - User: anwarsagirmustapha1@gmail.com - Path: /admin/
+2025-07-27 15:32:28.224629 - User: anwarsagirmustapha1@gmail.com - Path: /admin/auth/group/
+2025-07-27 15:32:28.377107 - User: anwarsagirmustapha1@gmail.com - Path: /admin/jsi18n/
