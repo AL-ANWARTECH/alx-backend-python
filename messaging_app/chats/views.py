@@ -1,21 +1,28 @@
-# chats/views.py
+# messaging_app/chats/views.py
 
 from rest_framework import viewsets, status, filters
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Conversation, Message, User
 from .serializers import ConversationSerializer, MessageSerializer
+from .permissions import IsParticipantOrReadOnly, IsSenderOrReadOnly
 
 
 class ConversationViewSet(viewsets.ModelViewSet):
     queryset = Conversation.objects.all()
     serializer_class = ConversationSerializer
+    permission_classes = [IsParticipantOrReadOnly]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
     search_fields = ['participants__email', 'participants__first_name', 'participants__last_name']
     ordering_fields = ['created_at']
     ordering = ['-created_at']
+
+    def get_queryset(self):
+        # Users can only see conversations they're part of
+        if self.request.user.is_authenticated:
+            return Conversation.objects.filter(participants=self.request.user)
+        return Conversation.objects.none()
 
     def create(self, request, *args, **kwargs):
         """
@@ -28,6 +35,10 @@ class ConversationViewSet(viewsets.ModelViewSet):
                 {'error': 'Participants are required'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+        # Always include the current user as a participant
+        if str(request.user.user_id) not in participant_ids:
+            participant_ids.append(str(request.user.user_id))
         
         # Validate that all participant IDs exist
         participants = User.objects.filter(user_id__in=participant_ids)
@@ -58,41 +69,48 @@ class ConversationViewSet(viewsets.ModelViewSet):
 class MessageViewSet(viewsets.ModelViewSet):
     queryset = Message.objects.all()
     serializer_class = MessageSerializer
+    permission_classes = [IsSenderOrReadOnly]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
     search_fields = ['message_body', 'sender__email']
     ordering_fields = ['sent_at']
     ordering = ['-sent_at']
+
+    def get_queryset(self):
+        # Users can only see messages from conversations they're part of
+        if self.request.user.is_authenticated:
+            return Message.objects.filter(
+                conversation__participants=self.request.user
+            ).distinct()
+        return Message.objects.none()
 
     def create(self, request, *args, **kwargs):
         """
         Send a new message to an existing conversation
         """
         conversation_id = request.data.get('conversation_id')
-        sender_id = request.data.get('sender_id')
         message_body = request.data.get('message_body')
         
         # Validate required fields
-        if not all([conversation_id, sender_id, message_body]):
+        if not all([conversation_id, message_body]):
             return Response(
-                {'error': 'conversation_id, sender_id, and message_body are required'}, 
+                {'error': 'conversation_id and message_body are required'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
         
         try:
-            # Check if conversation and sender exist
+            # Check if conversation exists
             conversation = Conversation.objects.get(conversation_id=conversation_id)
-            sender = User.objects.get(user_id=sender_id)
             
-            # Check if sender is part of the conversation
-            if sender not in conversation.participants.all():
+            # Check if current user is part of the conversation
+            if request.user not in conversation.participants.all():
                 return Response(
-                    {'error': 'Sender is not part of this conversation'}, 
+                    {'error': 'You are not part of this conversation'}, 
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            # Create the message
+            # Create the message with current user as sender
             message = Message.objects.create(
-                sender=sender,
+                sender=request.user,
                 conversation=conversation,
                 message_body=message_body
             )
@@ -103,11 +121,6 @@ class MessageViewSet(viewsets.ModelViewSet):
         except Conversation.DoesNotExist:
             return Response(
                 {'error': 'Conversation not found'}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
-        except User.DoesNotExist:
-            return Response(
-                {'error': 'Sender not found'}, 
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
@@ -123,9 +136,14 @@ class MessageViewSet(viewsets.ModelViewSet):
         conversation_id = request.query_params.get('conversation_id', None)
         
         if conversation_id:
-            queryset = Message.objects.filter(conversation__conversation_id=conversation_id)
+            queryset = Message.objects.filter(
+                conversation__conversation_id=conversation_id,
+                conversation__participants=request.user
+            )
         else:
-            queryset = Message.objects.all()
+            queryset = Message.objects.filter(
+                conversation__participants=request.user
+            )
             
         queryset = queryset.order_by('-sent_at')
         serializer = self.get_serializer(queryset, many=True)
