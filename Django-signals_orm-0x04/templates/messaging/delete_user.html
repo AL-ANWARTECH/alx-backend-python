@@ -1,0 +1,38 @@
+<!-- templates/messaging/delete_user.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Delete Account</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .warning { color: #721c24; background-color: #f8d7da; padding: 10px; border-radius: 5px; }
+        .btn { background-color: #dc3545; color: white; padding: 10px 20px; text-decoration: none; border: none; border-radius: 5px; }
+        .btn:hover { background-color: #c82333; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Delete Your Account</h1>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div style="color: green;">{{ message }}</div>
+            {% endfor %}
+        {% else %}
+            <div class="warning">
+                <strong>Warning:</strong> This action cannot be undone. All your messages, notifications, and history will be deleted.
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+                <p>
+                    <button type="submit" class="btn">Yes, Delete My Account</button>
+                </p>
+            </form>
+
+            <p><a href="/">Cancel</a></p>
+        {% endif %}
+    </div>
+</body>
+</html>
