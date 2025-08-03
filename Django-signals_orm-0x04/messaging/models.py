@@ -17,20 +17,46 @@ class Message(models.Model):
     )
     content = models.TextField()
     timestamp = models.DateTimeField(default=timezone.now)
-    edited = models.BooleanField(default=False)  # ← NEW: Tracks if message was edited
+    edited = models.BooleanField(default=False)
+
+    # Self-referential FK: allows replies to messages
+    parent_message = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='replies'
+    )
 
     def __str__(self):
+        if self.parent_message:
+            return f"Reply by {self.sender} to {self.receiver}"
         return f"From {self.sender} to {self.receiver} at {self.timestamp}"
+
+    class Meta:
+        ordering = ['timestamp']
+
+    def get_all_replies(self):
+        """
+        Recursively get all replies to this message, including:
+        - Direct replies
+        - Replies to those replies (nested)
+        - And so on...
+        Returns a flat list of Message objects.
+        """
+        all_replies = []
+        for reply in self.replies.all():
+            all_replies.append(reply)
+            # Recursively get deeper replies
+            all_replies.extend(reply.get_all_replies())
+        return all_replies
 
 
 class MessageHistory(models.Model):
-    """
-    Stores previous versions of a message whenever it's edited.
-    """
     message = models.ForeignKey(
         Message,
         on_delete=models.CASCADE,
-        related_name='history'  # Now you can do: message.history.all()
+        related_name='history'
     )
     old_content = models.TextField()
     edited_at = models.DateTimeField(default=timezone.now)
@@ -40,7 +66,6 @@ class MessageHistory(models.Model):
         return f"Edit history for message {self.message.id}"
 
 
-# Reuse Notification from Task 0
 class Notification(models.Model):
     user = models.ForeignKey(
         User,
