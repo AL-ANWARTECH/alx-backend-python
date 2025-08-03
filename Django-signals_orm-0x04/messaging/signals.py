@@ -19,7 +19,7 @@ def log_message_edit(sender, instance, **kwargs):
                     message=instance,
                     old_content=old_message.content,
                     edited_at=timezone.now(),
-                    editor=instance.sender  # Assuming sender is editing
+                    edited_by=instance.sender  # Assuming sender is editing
                 )
                 instance.edited = True  # Mark message as edited
         except Message.DoesNotExist:
