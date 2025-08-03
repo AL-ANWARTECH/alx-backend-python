@@ -1,6 +1,7 @@
 # messaging/views.py
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.cache import cache_page  # ✅ Import cache_page
 from django.contrib.auth import logout
 from django.contrib import messages
 from django.db.models import Q
@@ -25,11 +26,13 @@ def delete_user(request):
     return render(request, 'messaging/delete_user.html')
 
 
+@cache_page(60)  # ✅ Cache this view for 60 seconds
 @login_required
 def conversation_thread(request, user_id):
     """
     Displays a conversation thread between the current user and another user.
     Shows messages and all nested replies.
+    Cached for 60 seconds.
     """
     # Get the other user, or return 404 if not found
     other_user = get_object_or_404(User, id=user_id)
