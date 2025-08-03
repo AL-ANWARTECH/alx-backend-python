@@ -4,6 +4,18 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 
 
+class UnreadMessagesManager(models.Manager):
+    """
+    Custom manager to get unread messages for a specific user.
+    Usage: Message.unread.for_user(user)
+    """
+    def for_user(self, user):
+        return self.get_queryset().filter(
+            receiver=user,
+            read=False
+        ).only('id', 'sender', 'content', 'timestamp')  # ✅ Optimize with .only()
+
+
 class Message(models.Model):
     sender = models.ForeignKey(
         User,
@@ -18,8 +30,9 @@ class Message(models.Model):
     content = models.TextField()
     timestamp = models.DateTimeField(default=timezone.now)
     edited = models.BooleanField(default=False)
+    read = models.BooleanField(default=False)  # ✅ NEW: Track if message is read
 
-    # Self-referential FK: allows replies to messages
+    # Self-referential FK for replies
     parent_message = models.ForeignKey(
         'self',
         on_delete=models.CASCADE,
@@ -27,6 +40,10 @@ class Message(models.Model):
         blank=True,
         related_name='replies'
     )
+
+    # Managers
+    objects = models.Manager()           # Default manager
+    unread = UnreadMessagesManager()     # Custom manager
 
     def __str__(self):
         if self.parent_message:
@@ -38,16 +55,11 @@ class Message(models.Model):
 
     def get_all_replies(self):
         """
-        Recursively get all replies to this message, including:
-        - Direct replies
-        - Replies to those replies (nested)
-        - And so on...
-        Returns a flat list of Message objects.
+        Recursively get all replies (including nested ones)
         """
         all_replies = []
         for reply in self.replies.all():
             all_replies.append(reply)
-            # Recursively get deeper replies
             all_replies.extend(reply.get_all_replies())
         return all_replies
 
