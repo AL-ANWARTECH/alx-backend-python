@@ -2,18 +2,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
-
-
-class UnreadMessagesManager(models.Manager):
-    """
-    Custom manager to get unread messages for a specific user.
-    Usage: Message.unread.for_user(user)
-    """
-    def for_user(self, user):
-        return self.get_queryset().filter(
-            receiver=user,
-            read=False
-        ).only('id', 'sender', 'content', 'timestamp')  # ✅ Optimize with .only()
+from .managers import UnreadMessagesManager  # ✅ Import from managers.py
 
 
 class Message(models.Model):
@@ -30,7 +19,7 @@ class Message(models.Model):
     content = models.TextField()
     timestamp = models.DateTimeField(default=timezone.now)
     edited = models.BooleanField(default=False)
-    read = models.BooleanField(default=False)  # ✅ NEW: Track if message is read
+    read = models.BooleanField(default=False)  # ✅ Track if message is read
 
     # Self-referential FK for replies
     parent_message = models.ForeignKey(
@@ -42,8 +31,8 @@ class Message(models.Model):
     )
 
     # Managers
-    objects = models.Manager()           # Default manager
-    unread = UnreadMessagesManager()     # Custom manager
+    objects = models.Manager()              # Default manager
+    unread = UnreadMessagesManager()        # ✅ Custom manager from managers.py
 
     def __str__(self):
         if self.parent_message:
